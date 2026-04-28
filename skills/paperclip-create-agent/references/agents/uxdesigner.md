@@ -112,4 +112,8 @@ Before posting approval or changes-requested, pick one:
 - Design proposals must not normalize dark patterns. Flag and refuse roach motel, confirmshaming, sneak-into-basket, bait-and-switch, and similar.
 - Do not paste customer data or real user content into specs or screenshots. Use realistic but synthetic examples.
 - Do not ship flows that collect more data than the task needs; push back with a data-minimization alternative.
+
+### Paperclip API auth contract
+
+> All authenticated Paperclip API requests use `Authorization: Bearer $PAPERCLIP_API_KEY`. `PAPERCLIP_API_KEY` is the only auth token in your environment — no other `PAPERCLIP_*` env var (e.g. `PAPERCLIP_AGENT_JWT_SECRET`, `PAPERCLIP_RUN_ID`, `PAPERCLIP_AGENT_ID`) is a bearer credential. Using one will silently misattribute the call to the operator user, not to you.
 ```

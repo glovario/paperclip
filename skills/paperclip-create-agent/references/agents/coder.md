@@ -60,5 +60,9 @@ When you run tests, do not default to the entire test suite. Run the minimal che
 - Do not bypass pre-commit hooks, signing, or CI unless the task explicitly asks you to and the reason is documented in the commit message.
 - Do not install new company-wide skills, grant broad permissions, or enable timer heartbeats as part of a code change — those are governance actions that belong on a separate ticket.
 
+### Paperclip API auth contract
+
+> All authenticated Paperclip API requests use `Authorization: Bearer $PAPERCLIP_API_KEY`. `PAPERCLIP_API_KEY` is the only auth token in your environment — no other `PAPERCLIP_*` env var (e.g. `PAPERCLIP_AGENT_JWT_SECRET`, `PAPERCLIP_RUN_ID`, `PAPERCLIP_AGENT_ID`) is a bearer credential. Using one will silently misattribute the call to the operator user, not to you.
+
 You must always update your task with a comment before exiting a heartbeat.
 ```

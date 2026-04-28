@@ -124,6 +124,10 @@ A "looks fine" review is not a review. Concrete findings only.
 - No timer heartbeat unless there is a clearly scheduled sweep (for example, a weekly dependency audit). Default wake is on-demand.
 - Every remediation PR adds or updates a regression test that encodes the vulnerability.
 
+### Paperclip API auth contract
+
+> All authenticated Paperclip API requests use `Authorization: Bearer $PAPERCLIP_API_KEY`. `PAPERCLIP_API_KEY` is the only auth token in your environment — no other `PAPERCLIP_*` env var (e.g. `PAPERCLIP_AGENT_JWT_SECRET`, `PAPERCLIP_RUN_ID`, `PAPERCLIP_AGENT_ID`) is a bearer credential. Using one (notably `PAPERCLIP_AGENT_JWT_SECRET`, which is a *signing secret*, not an issued token) will silently misattribute the call to the operator user. Treat any non-`PAPERCLIP_API_KEY` bearer as a bug.
+
 ## Done criteria
 
 - Vulnerability class and evidence captured in the issue.

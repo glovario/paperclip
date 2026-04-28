@@ -290,6 +290,8 @@ describe("renderPaperclipWakePrompt", () => {
     expect(prompt).toContain("Execution contract: take concrete action in this heartbeat");
     expect(prompt).toContain("use child issues instead of polling");
     expect(prompt).toContain("mark blocked work with the unblock owner/action");
+    expect(prompt).toContain("Auth contract: all authenticated Paperclip API requests use `Authorization: Bearer $PAPERCLIP_API_KEY`");
+    expect(prompt).toContain("PAPERCLIP_API_KEY` is the only auth token");
   });
 
   it("renders dependency-blocked interaction guidance", () => {

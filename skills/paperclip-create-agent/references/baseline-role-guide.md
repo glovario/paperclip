@@ -103,6 +103,10 @@ Default to least privilege. For each new role, explicitly state:
 - whether a timer heartbeat is needed (default: off; only enable with an explicit justification and `intervalSec`)
 - which `desiredSkills` the role needs on day one — install missing skills before submitting the hire
 
+Include the Paperclip API auth contract verbatim in this section so the new agent does not reach for the wrong env var on a fast-path wake (before the `paperclip` skill is loaded):
+
+> All authenticated Paperclip API requests use `Authorization: Bearer $PAPERCLIP_API_KEY`. `PAPERCLIP_API_KEY` is the only auth token in your environment — no other `PAPERCLIP_*` env var (e.g. `PAPERCLIP_AGENT_JWT_SECRET`, `PAPERCLIP_RUN_ID`, `PAPERCLIP_AGENT_ID`) is a bearer credential. Using one will silently misattribute the call to the operator user, not to you.
+
 ### 8. Done criteria
 
 How the agent verifies its own work before marking an issue done or handing it to a reviewer. Be concrete:
@@ -159,6 +163,10 @@ You report to {{managerTitle}}. Work only on tasks assigned to you or explicitly
 ## Safety and permissions
 
 <!-- Least privilege. Heartbeat default off. Secrets handling. desiredSkills. -->
+
+### Paperclip API auth contract
+
+> All authenticated Paperclip API requests use `Authorization: Bearer $PAPERCLIP_API_KEY`. `PAPERCLIP_API_KEY` is the only auth token in your environment — no other `PAPERCLIP_*` env var (e.g. `PAPERCLIP_AGENT_JWT_SECRET`, `PAPERCLIP_RUN_ID`, `PAPERCLIP_AGENT_ID`) is a bearer credential. Using one will silently misattribute the call to the operator user, not to you.
 
 ## Done
 
