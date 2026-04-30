@@ -16,6 +16,7 @@ import {
   heartbeatRunWatchdogDecisions,
   heartbeatRuns,
   issueApprovals,
+  issueComments,
   issueRelations,
   issueThreadInteractions,
   issues,
@@ -275,6 +276,18 @@ function buildLivenessOriginalIssueComment(finding: IssueLivenessFinding, escala
   ].join("\n");
 }
 
+const COMPLETION_HEADING_PATTERN = /^#{1,3}\s+(done|completed|summary|update|result|output|finished)\b/im;
+const COMPLETION_STATUS_LINE_PATTERN = /^(done|completed|finished|task complete|work complete)\b/im;
+const BLOCKER_LANGUAGE_PATTERN = /\b(blocked by|waiting on|waiting for|depends on|unresolved|blocker|cannot proceed|need[s]? .{0,30} before)\b/i;
+
+export function hasStructuredCompletionOutput(body: string): boolean {
+  if (!body || body.trim().length === 0) return false;
+  const hasCompletionMarker =
+    COMPLETION_HEADING_PATTERN.test(body) || COMPLETION_STATUS_LINE_PATTERN.test(body);
+  if (!hasCompletionMarker) return false;
+  return !BLOCKER_LANGUAGE_PATTERN.test(body);
+}
+
 export function recoveryService(db: Db, deps: { enqueueWakeup: RecoveryWakeup }) {
   const issuesSvc = issueService(db);
   const treeControlSvc = issueTreeControlService(db);
@@ -356,6 +369,30 @@ export function recoveryService(db: Db, deps: { enqueueWakeup: RecoveryWakeup })
       )
       .limit(1)
       .then((rows) => Boolean(rows[0]));
+  }
+
+  async function isRoutineExecutionWithCompletionOutput(
+    issue: Pick<typeof issues.$inferSelect, "id" | "companyId" | "originKind">,
+  ): Promise<boolean> {
+    if (issue.originKind !== "routine_execution") return false;
+    try {
+      const [latestAgentComment] = await db
+        .select({ body: issueComments.body })
+        .from(issueComments)
+        .where(
+          and(
+            eq(issueComments.issueId, issue.id),
+            eq(issueComments.companyId, issue.companyId),
+            sql`${issueComments.authorAgentId} is not null`,
+          ),
+        )
+        .orderBy(desc(issueComments.createdAt))
+        .limit(1);
+      if (!latestAgentComment) return false;
+      return hasStructuredCompletionOutput(latestAgentComment.body);
+    } catch {
+      return false;
+    }
   }
 
   async function enqueueStrandedIssueRecovery(input: {
@@ -1572,6 +1609,7 @@ export function recoveryService(db: Db, deps: { enqueueWakeup: RecoveryWakeup })
       assignmentDispatched: 0,
       dispatchRequeued: 0,
       continuationRequeued: 0,
+      routineCompletionSuppressed: 0,
       orphanBlockersAssigned: 0,
       escalated: 0,
       skipped: 0,
@@ -1645,6 +1683,10 @@ export function recoveryService(db: Db, deps: { enqueueWakeup: RecoveryWakeup })
         }
 
         if (didAutomaticRecoveryFail(latestRun, "assignment_recovery")) {
+          if (await isRoutineExecutionWithCompletionOutput(issue)) {
+            result.routineCompletionSuppressed += 1;
+            continue;
+          }
           const failureSummary = summarizeRunFailureForIssueComment(latestRun);
           const updated = await escalateStrandedAssignedIssue({
             issue,
@@ -1691,6 +1733,10 @@ export function recoveryService(db: Db, deps: { enqueueWakeup: RecoveryWakeup })
         continue;
       }
       if (didAutomaticRecoveryFail(latestRun, "issue_continuation_needed")) {
+        if (await isRoutineExecutionWithCompletionOutput(issue)) {
+          result.routineCompletionSuppressed += 1;
+          continue;
+        }
         const failureSummary = summarizeRunFailureForIssueComment(latestRun);
         const updated = await escalateStrandedAssignedIssue({
           issue,
