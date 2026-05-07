@@ -64,7 +64,6 @@ describe("instance settings routes", () => {
     mockInstanceSettingsService.getExperimental.mockResolvedValue({
       enableEnvironments: false,
       enableIsolatedWorkspaces: false,
-      enableNewestFirstIssueThread: false,
       autoRestartDevServerWhenIdle: false,
       enableIssueGraphLivenessAutoRecovery: true,
       issueGraphLivenessAutoRecoveryLookbackHours: 24,
@@ -82,7 +81,6 @@ describe("instance settings routes", () => {
       experimental: {
         enableEnvironments: true,
         enableIsolatedWorkspaces: true,
-        enableNewestFirstIssueThread: false,
         autoRestartDevServerWhenIdle: false,
         enableIssueGraphLivenessAutoRecovery: true,
         issueGraphLivenessAutoRecoveryLookbackHours: 24,
@@ -125,7 +123,6 @@ describe("instance settings routes", () => {
     expect(getRes.body).toEqual({
       enableEnvironments: false,
       enableIsolatedWorkspaces: false,
-      enableNewestFirstIssueThread: false,
       autoRestartDevServerWhenIdle: false,
       enableIssueGraphLivenessAutoRecovery: true,
       issueGraphLivenessAutoRecoveryLookbackHours: 24,
