@@ -591,22 +591,22 @@ export function RoutineDetail() {
   const activityTabsPanel = useMemo(() => {
     if (!routine) return null;
     return (
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3 min-w-0">
-        <TabsList variant="line" className="w-full justify-start gap-1 overflow-x-auto">
-          <TabsTrigger value="triggers" className="gap-1.5 flex-none px-2">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
+        <TabsList variant="line" className="w-full justify-start gap-1">
+          <TabsTrigger value="triggers" className="gap-1.5">
             <Clock3 className="h-3.5 w-3.5" />
             Triggers
           </TabsTrigger>
-          <TabsTrigger value="runs" className="gap-1.5 flex-none px-2">
+          <TabsTrigger value="runs" className="gap-1.5">
             <Play className="h-3.5 w-3.5" />
             Runs
             {hasLiveRun && <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />}
           </TabsTrigger>
-          <TabsTrigger value="activity" className="gap-1.5 flex-none px-2">
+          <TabsTrigger value="activity" className="gap-1.5">
             <ActivityIcon className="h-3.5 w-3.5" />
             Activity
           </TabsTrigger>
-          <TabsTrigger value="history" className="gap-1.5 flex-none px-2">
+          <TabsTrigger value="history" className="gap-1.5">
             <HistoryIcon className="h-3.5 w-3.5" />
             History
           </TabsTrigger>
@@ -815,14 +815,7 @@ export function RoutineDetail() {
       closePanel();
       return;
     }
-    openPanel(activityTabsPanel, {
-      storageKey: "paperclip.properties.width.routines",
-      defaultWidth: 400,
-      minWidth: 320,
-      maxWidth: 640,
-      compactBelowViewport: 1024,
-      compactMaxWidth: 320,
-    });
+    openPanel(activityTabsPanel);
     return () => closePanel();
   }, [activityTabsPanel, closePanel, openPanel]);
 
@@ -861,7 +854,7 @@ export function RoutineDetail() {
   return (
     <div className="max-w-2xl space-y-6">
       {/* Header: editable title + actions */}
-      <div className="flex flex-col items-stretch gap-3 min-[1120px]:flex-row min-[1120px]:items-start min-[1120px]:gap-4">
+      <div className="flex items-start gap-4">
         <div className="min-w-0 flex-1 space-y-2">
           <textarea
             ref={titleInputRef}
@@ -900,7 +893,7 @@ export function RoutineDetail() {
             </Badge>
           ) : null}
         </div>
-        <div className="flex w-full shrink-0 flex-wrap items-center gap-3 pt-1 min-[1120px]:w-auto min-[1120px]:flex-nowrap">
+        <div className="flex shrink-0 items-center gap-3 pt-1">
           <RunButton
             onClick={() => {
               setRunVariablesOpen(true);
@@ -935,7 +928,6 @@ export function RoutineDetail() {
               panelVisible ? "opacity-0 pointer-events-none w-0 overflow-hidden" : "opacity-100",
             )}
             onClick={() => setPanelVisible(true)}
-            aria-label="Show triggers, runs and activity"
             title="Show triggers, runs and activity"
           >
             <SlidersHorizontal className="h-4 w-4" />
