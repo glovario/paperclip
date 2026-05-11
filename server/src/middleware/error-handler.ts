@@ -97,9 +97,8 @@ export function errorHandler(
   }
 
   if (err instanceof ZodError) {
-    const zodRequestId = randomUUID();
-    console.error(`[${zodRequestId}] ZodError:`, err.errors);
-    res.status(400).json({ error: "Validation error", details: err.errors, requestId: zodRequestId });
+    console.error(`[${requestId}] ZodError:`, err.errors);
+    res.status(400).json({ error: "Validation error", details: err.errors, requestId });
     return;
   }
 
