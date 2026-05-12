@@ -64,6 +64,12 @@ import { SANDBOX_INSTALL_COMMAND } from "../index.js";
 
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
 
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+function retryJitter(baseMs: number): number {
+  return Math.floor(Math.random() * baseMs * 0.2);
+}
+
 interface ClaudeExecutionInput {
   runId: string;
   agent: AdapterExecutionContext["agent"];
@@ -367,6 +373,9 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const effort = asString(config.effort, "");
   const chrome = asBoolean(config.chrome, false);
   const maxTurns = asNumber(config.maxTurnsPerRun, 0);
+  const rateLimitMaxRetries = asNumber(config.rateLimitMaxRetries, 3);
+  const rateLimitBackoffBaseMs = asNumber(config.rateLimitBackoffBaseMs, 10_000);
+  const rateLimitBackoffCeilingMs = asNumber(config.rateLimitBackoffCeilingMs, 300_000);
   const dangerouslySkipPermissions = asBoolean(config.dangerouslySkipPermissions, true);
   const configEnv = parseObject(config.env);
   const workspaceContext = parseObject(context.paperclipWorkspace);
@@ -930,6 +939,10 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
 
   try {
     const initial = await runAttempt(sessionId ?? null);
+    let baseAttempt = initial;
+    let baseFallbackSessionId: string | null = runtimeSessionId || runtime.sessionId || null;
+    let baseClearSession = false;
+
     if (
       sessionId &&
       !initial.proc.timedOut &&
@@ -941,11 +954,56 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
         "stdout",
         `[paperclip] Claude resume session "${sessionId}" is unavailable; retrying with a fresh session.\n`,
       );
-      const retry = await runAttempt(null);
-      return toAdapterResult(retry, { fallbackSessionId: null, clearSessionOnMissingSession: true });
+      const sessionRetry = await runAttempt(null);
+      baseAttempt = sessionRetry;
+      baseFallbackSessionId = null;
+      baseClearSession = true;
     }
 
-    return toAdapterResult(initial, { fallbackSessionId: runtimeSessionId || runtime.sessionId });
+    let currentAttempt = baseAttempt;
+    let retryCount = 0;
+    while (retryCount < rateLimitMaxRetries && !currentAttempt.proc.timedOut) {
+      const transient = isClaudeTransientUpstreamError({
+        parsed: currentAttempt.parsed,
+        stdout: currentAttempt.proc.stdout,
+        stderr: currentAttempt.proc.stderr,
+      });
+      if (!transient) break;
+
+      const retryNotBefore = extractClaudeRetryNotBefore({
+        parsed: currentAttempt.parsed,
+        stdout: currentAttempt.proc.stdout,
+        stderr: currentAttempt.proc.stderr,
+      });
+      const waitMs = retryNotBefore
+        ? Math.max(0, retryNotBefore.getTime() - Date.now())
+        : Math.min(rateLimitBackoffBaseMs * (2 ** retryCount) + retryJitter(rateLimitBackoffBaseMs), rateLimitBackoffCeilingMs);
+
+      if (waitMs > rateLimitBackoffCeilingMs) break;
+
+      await onLog(
+        "stdout",
+        `[paperclip] Transient API error (rate limit/overload); backing off ${Math.round(waitMs / 1_000)}s before retry ${retryCount + 1}/${rateLimitMaxRetries}.\n`,
+      );
+      await sleep(waitMs);
+      currentAttempt = await runAttempt(baseFallbackSessionId ?? null);
+      retryCount++;
+    }
+
+    const result = toAdapterResult(currentAttempt, {
+      fallbackSessionId: baseFallbackSessionId,
+      clearSessionOnMissingSession: baseClearSession,
+    });
+
+    if (retryCount >= rateLimitMaxRetries && result.errorFamily === "transient_upstream") {
+      return {
+        ...result,
+        errorCode: "rate_limit_exhausted",
+        errorMessage: `Rate limit exhausted after ${retryCount} ${retryCount === 1 ? "retry" : "retries"}: ${result.errorMessage ?? "transient upstream error"}`,
+      };
+    }
+
+    return result;
   } finally {
     if (paperclipBridge) {
       await paperclipBridge.stop();
